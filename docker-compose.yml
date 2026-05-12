@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: # Dockerfileの位置を指定
+      context: ./backend
+      dockerfile: Dockerfile
+    ports: # ホストのポート
+      - "8000:8000"
+    volumes: #  ホストのファイル変更をコンテナに反映（開発用）
+      - ./backend:/app
+    environment: # 環境変数
+      - PYTHONUNBUFFERED=1
