@@ -19,8 +19,12 @@ try:
 except:
     collections = []
 
-if collections:
-    selected_collection = st.sidebar.selectbox("Collection", collections)
+collection_options = collections + ["新規Collectionを作成"]
+selected = st.sidebar.selectbox("Collection", collection_options)
+if selected == "新規Collectionを作成":
+    new_collection = st.sidebar.text_input("新しいCollection名")
+    if new_collection:
+        selected_collection = new_collection
 else:
     selected_collection = st.sidebar.text_input("Collection名", value="algorithms")
 
