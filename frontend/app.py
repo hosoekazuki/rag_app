@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
+import os
 
 # バックエンドのURL（Docker Compose内ではサービス名で接続）
-API_BASE = "http://backend:8000"
+API_BASE = os.getenv("API_BASE_URL", "http://backend:8000") 
 
 # ページ設定
 st.set_page_config(page_title="RAG Study App", layout="wide")
