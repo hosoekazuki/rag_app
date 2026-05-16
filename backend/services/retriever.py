@@ -30,10 +30,8 @@ def add_documents(collection_name: str, chunks: list[str], metadata_list: list[d
     return len(chunks)
 
 def search(collection_name: str, query: str, n_results: int = 3):
-    """
-    クエリに類似したドキュメントを検索する。
-    """
-    query_embedding = embed_texts([query])[0]
+    from services.embedder import embed_query
+    query_embedding = embed_query(query)
     
     results = index.query(
         vector=query_embedding,
@@ -42,7 +40,6 @@ def search(collection_name: str, query: str, n_results: int = 3):
         namespace=collection_name,
     )
     
-    # ChromaDBと同じ形式で返す（query.pyを変更しなくて済む）
     documents = []
     metadatas = []
     for match in results["matches"]:
@@ -68,7 +65,7 @@ def delete_document(collection_name: str, title: str):
     """
     # Pineconeはメタデータでフィルタ削除できる
     results = index.query(
-        vector=[0.0] * 384,  # ダミーベクトル
+        vector=[0.0] * 1024,  # ダミーベクトル
         top_k=100,
         include_metadata=True,
         namespace=collection_name,
