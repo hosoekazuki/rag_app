@@ -133,22 +133,37 @@ with tab_register:
 # ========== 管理タブ ==========
 with tab_manage:
     st.header("コンテンツ管理")
-    delete_title = st.text_input("削除するタイトル")
-
-    if st.button("削除", key="delete_btn"):
-        if not delete_title:
-            st.warning("タイトルを入力してください")
-        else:
-            with st.spinner("削除中..."):
-                try:
-                    res = requests.delete(
-                        f"{API_BASE}/document",
-                        params={
-                            "title": delete_title,
-                            "collection_name": selected_collection,
-                        },
-                    )
-                    data = res.json()
-                    st.success(f"削除完了：{data['chunks_deleted']}チャンク削除")
-                except Exception as e:
-                    st.error(f"エラーが発生しました: {e}")
+    
+    try:
+        res = requests.get(
+            f"{API_BASE}/documents",
+            params={"collection_name": selected_collection},
+        )
+        docs = []
+    except:
+        docs = []
+    if docs:
+        st.subheader("登録済みドキュメント")
+        for doc in docs:
+            col1, col2, col3 = st.columns([3, 2, 1])
+            with col1:
+                st.write(f"**{doc['title']}**")
+            with col2:
+                st.write(f"**{doc['chunk_count']}チャンク / {doc['source']}**")
+            with col3:
+                if st.button("削除", key=f"del_{doc['title']}"):
+                    try:
+                        res = requests.delete(
+                            f"{API_BASE}/document",
+                            params={
+                                "title": doc["title"],
+                                "collection_name": selected_collection,
+                            },
+                        )
+                        data = res.json()
+                        st.succecc(f"削除完了: {data['title']} ({data['chunks_deleted']}チャンク削除)")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"エラー: {e}")
+    else:
+        st.info("登録されたドキュメントがありません")

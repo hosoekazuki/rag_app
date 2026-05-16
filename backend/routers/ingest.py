@@ -100,3 +100,22 @@ async def remove_document(
         "title": title,
         "chunks_deleted": count,
     }
+
+@router.get("/documents")
+async def list_documentsz(collection_name: str = "algorithms"):
+    """コレクション内のドキュメント一覧を返す"""
+    from services.retriever import get_or_create_collection
+    collection = get_or_create_collection(collection_name)
+    results = collection.get()
+    docs = {}
+    for i, meta in enumerate(results["metadatas"]):
+        title = meta.get("title", "unknown")
+        if title not in docs:
+            docs[title] = {
+                "title": title,
+                "source": meta.get("source", "unknown"),
+                "created_at": meta.get("created_at", "unknown"),
+                "chunk_count": 0,
+            }
+        docs[title]["chunk_count"] += 1
+    return {"documents": list(docs.values())}
