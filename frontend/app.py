@@ -143,7 +143,7 @@ with tab_manage:
             f"{API_BASE}/documents",
             params={"collection_name": selected_collection},
         )
-        docs = []
+        docs = res.json().get("documents", [])
     except:
         docs = []
     if docs:
@@ -165,7 +165,7 @@ with tab_manage:
                             },
                         )
                         data = res.json()
-                        st.succecc(f"削除完了: {data['title']} ({data['chunks_deleted']}チャンク削除)")
+                        st.success(f"削除完了: {data['title']} ({data['chunks_deleted']}チャンク削除)")
                         st.rerun()
                     except Exception as e:
                         st.error(f"エラー: {e}")
