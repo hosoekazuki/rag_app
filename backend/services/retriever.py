@@ -1,81 +1,88 @@
-import chromadb
+import os
+from pinecone import Pinecone
 from services.embedder import embed_texts
 
-# ChromaDBクライアントの初期化
-# persist_directory : データの保存先（コンテナ内）
-client = chromadb.PersistentClient(path="/app/chroma_data")
-
-def get_or_create_collection(collection_name: str):
-    """
-    Collectionを取得。なければ新規作成。
-    RDBでいうテーブルに相当する。
-    """
-    return client.get_or_create_collection(name=collection_name)
+# Pineconeクライアント初期化
+# 環境変数からAPIキーを取得
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+index = pc.Index("ragapp")
 
 def add_documents(collection_name: str, chunks: list[str], metadata_list: list[dict]):
     """
-    チャンクをEmbeddingに変換してChromaDBに保存する。
-    
-    chunks        : 分割されたテキストのリスト
-    metadata_list : 各チャンクに付与するメタデータのリスト
+    チャンクをEmbeddingに変換してPineconeに保存する。
+    collection_name はnamespaceとして使う。
     """
-    collection = get_or_create_collection(collection_name)
-    
-    # Embeddingに変換
     embeddings = embed_texts(chunks)
     
-    # 各チャンクにユニークなIDを振る
-    ids = [f"{metadata_list[0]['title']}_{i}" for i in range(len(chunks))]
+    vectors = []
+    for i, (chunk, embedding, metadata) in enumerate(zip(chunks, embeddings, metadata_list)):
+        import hashlib
+        vec_id = hashlib.md5(f"{metadata['title']}_{i}".encode()).hexdigest()
+        metadata["text"] = chunk
+        vectors.append({
+            "id": vec_id,
+            "values": embedding,
+            "metadata": metadata,
+        })
     
-    # ChromaDBに保存
-    collection.add(
-        ids=ids,
-        documents=chunks,
-        embeddings=embeddings,
-        metadatas=metadata_list,
-    )
-    
+    # namespaceでCollectionを分離
+    index.upsert(vectors=vectors, namespace=collection_name)
     return len(chunks)
 
 def search(collection_name: str, query: str, n_results: int = 3):
     """
     クエリに類似したドキュメントを検索する。
-    
-    query     : 検索クエリ（テキスト）
-    n_results : 返す件数
     """
-    collection = get_or_create_collection(collection_name)
-    
-    # クエリをEmbeddingに変換
     query_embedding = embed_texts([query])[0]
     
-    # 類似検索
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
+    results = index.query(
+        vector=query_embedding,
+        top_k=n_results,
+        include_metadata=True,
+        namespace=collection_name,
     )
     
-    return results
+    # ChromaDBと同じ形式で返す（query.pyを変更しなくて済む）
+    documents = []
+    metadatas = []
+    for match in results["matches"]:
+        documents.append(match["metadata"].get("text", ""))
+        metadatas.append(match["metadata"])
+    
+    return {
+        "documents": [documents],
+        "metadatas": [metadatas],
+    }
 
 def list_collections():
     """
-    全Collectionの名前一覧を返す。
+    全namespaceの一覧を返す。
     """
-    collections = client.list_collections()
-    return [col.name for col in collections]
+    stats = index.describe_index_stats()
+    namespaces = list(stats.get("namespaces", {}).keys())
+    return namespaces
 
 def delete_document(collection_name: str, title: str):
     """
     タイトルに一致するドキュメントを削除する。
     """
-    collection = get_or_create_collection(collection_name)
-    
-    # タイトルでフィルタして該当IDを取得
-    results = collection.get(
-        where={"title": title}
+    # Pineconeはメタデータでフィルタ削除できる
+    results = index.query(
+        vector=[0.0] * 384,  # ダミーベクトル
+        top_k=100,
+        include_metadata=True,
+        namespace=collection_name,
+        filter={"title": {"$eq": title}},
     )
     
-    if results["ids"]:
-        collection.delete(ids=results["ids"])
-        return len(results["ids"])
-    return 0
+    ids_to_delete = [match["id"] for match in results["matches"]]
+    if ids_to_delete:
+        index.delete(ids=ids_to_delete, namespace=collection_name)
+    return len(ids_to_delete)
+
+def get_or_create_collection(collection_name: str):
+    """
+    Pineconeではnamespaceが自動作成されるので何もしない。
+    ingest.pyのdocuments APIとの互換用。
+    """
+    return None

@@ -21,13 +21,11 @@ except:
 
 collection_options = collections + ["新規Collectionを作成"]
 selected = st.sidebar.selectbox("Collection", collection_options)
-if selected == "新規Collectionを作成":
-    new_collection = st.sidebar.text_input("新しいCollection名")
-    if new_collection:
-        selected_collection = new_collection
-else:
-    selected_collection = st.sidebar.text_input("Collection名", value="algorithms")
 
+if selected == "新規Collectionを作成":
+    selected_collection = st.sidebar.text_input("新しいCollection名", value="algorithms")
+else:
+    selected_collection = selected
 # メイン画面：タブで機能を切り替え
 tab_search, tab_register, tab_manage = st.tabs(["🔍 検索", "📝 登録", "📋 管理"])
 
@@ -165,7 +163,7 @@ with tab_manage:
                             },
                         )
                         data = res.json()
-                        st.success(f"削除完了: {data['title']} ({data['chunks_deleted']}チャンク削除)")
+                        st.succe(f"削除完了: {data['title']} ({data['chunks_deleted']}チャンク削除)")
                         st.rerun()
                     except Exception as e:
                         st.error(f"エラー: {e}")

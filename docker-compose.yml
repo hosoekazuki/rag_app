@@ -9,6 +9,8 @@ services:
       - ./backend:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - PINECONE_API_KEY=pcsk_AoQGh_L4aL5pgM5QVjvvMALcys5S5868NeJYzwpZru5U5DRFEwwTWbUFnMZLiwtESvGT3
+
 
   frontend:
     build:
